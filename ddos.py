@@ -1,31 +1,34 @@
-import aiohttp
-import asyncio
-import threading
+#!/usr/bin/env python3
+import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-async def fetch(session, url):
+def send_request(url, timeout):
+    """
+    Belirtilen URL'ye GET isteği gönderir ve sonuç olarak durum kodunu döner.
+    """
     try:
-        async with session.get(url) as response:
-            print(f"{url} - Status: {response.status}")
+        response = requests.get(url, timeout=timeout)
+        return f"{url} -> Status Code: {response.status_code}"
     except Exception as e:
-        print(f"{url} - Error: {e}")
+        return f"{url} -> Error: {e}"
 
-async def unlimited_requests(url, delay):
-    async with aiohttp.ClientSession() as session:
-        while True:
-            await fetch(session, url)
-            await asyncio.sleep(delay)  # Gecikme süresi
+def main():
+    # Kullanıcıdan giriş alıyoruz
+    target_url = input("Hedef URL'yi girin: ")
+    num_requests = int(input("Kaç istek göndermek istiyorsunuz? (Önerilen: 100): "))
+    num_threads = int(input("Kaç thread kullanılsın? (Önerilen: 10): "))
+    timeout = float(input("İstek zaman aşımı süresi (saniye)? (Önerilen: 5): "))
 
-def start_async_loop(url, delay):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(unlimited_requests(url, delay))
+    print(f"\nHedef URL: {target_url}")
+    print(f"Toplam {num_requests} istek, {num_threads} thread kullanılarak gönderilecek.\n")
 
-# Kullanıcıdan giriş al
-url = input("Lütfen URL'yi girin: ")
-delay = float(input("İstekler arasındaki gecikmeyi (saniye) girin: "))
-threads = int(input("Kaç adet iş parçacığı (thread) olsun?: "))
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+        # Kullanıcıdan alınan bilgilere göre istekler oluşturuyoruz.
+        futures = [executor.submit(send_request, target_url, timeout) for _ in range(num_requests)]
 
-# Çoklu iş parçacıklı çalıştırma
-for _ in range(threads):
-    thread = threading.Thread(target=start_async_loop, args=(url, delay))
-    thread.start()
+        # Görevler tamamlandıkça sonucu yazdırıyoruz.
+        for future in as_completed(futures):
+            print(future.result())
+
+if __name__ == "__main__":
+    main()
